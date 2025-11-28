@@ -379,7 +379,10 @@ def execute_task_thread(task_id, project_dir):
 def list_files():
     """List files in current project directory."""
     if not state['current_project_dir']:
-        return jsonify({'error': 'No project directory selected'}), 400
+        return jsonify([])  # Return empty list instead of error
+    
+    if not os.path.exists(state['current_project_dir']):
+        return jsonify({'error': 'Project directory does not exist'}), 400
     
     files = []
     try:
@@ -390,13 +393,17 @@ def list_files():
             for filename in filenames:
                 if not filename.startswith('.'):
                     filepath = os.path.join(root, filename)
-                    rel_path = os.path.relpath(filepath, state['current_project_dir'])
-                    files.append({
-                        'path': rel_path,
-                        'name': filename,
-                        'size': os.path.getsize(filepath),
-                        'modified': datetime.fromtimestamp(os.path.getmtime(filepath)).isoformat()
-                    })
+                    try:
+                        rel_path = os.path.relpath(filepath, state['current_project_dir'])
+                        files.append({
+                            'path': rel_path,
+                            'name': filename,
+                            'size': os.path.getsize(filepath),
+                            'modified': datetime.fromtimestamp(os.path.getmtime(filepath)).isoformat()
+                        })
+                    except Exception as e:
+                        # Skip files we can't access
+                        continue
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     

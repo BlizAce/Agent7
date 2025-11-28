@@ -55,27 +55,30 @@ if errorlevel 1 (
 )
 echo Dependencies installed successfully
 
-REM Check if scheduler service is running
+REM Check if scheduler task is running
 echo.
-echo [5/5] Checking scheduler service...
-sc query Agent7Scheduler >nul 2>&1
+echo [5/5] Checking scheduler task...
+schtasks /Query /TN "Agent7Scheduler" >nul 2>&1
 if errorlevel 1 (
-    echo Scheduler service not installed
-    echo You can install it later with: install_service.bat
+    echo Scheduler task not installed
+    echo You can install it with: create_scheduled_task.bat (as Administrator)
+    echo.
+    echo Note: Scheduler is optional. It only handles automatic task
+    echo resumption after Claude session limits. Everything else works fine!
 ) else (
-    sc query Agent7Scheduler | find "RUNNING" >nul
+    schtasks /Query /TN "Agent7Scheduler" /FO LIST | find "Running" >nul
     if errorlevel 1 (
-        echo Scheduler service is installed but not running
-        echo Starting service...
-        net start Agent7Scheduler >nul 2>&1
+        echo Scheduler task exists but not running
+        echo Starting task...
+        schtasks /Run /TN "Agent7Scheduler" >nul 2>&1
         if errorlevel 1 (
-            echo Could not start service automatically
-            echo You can start it manually with: net start Agent7Scheduler
+            echo Could not start task automatically
+            echo You can start it manually with: schtasks /Run /TN "Agent7Scheduler"
         ) else (
-            echo Scheduler service started
+            echo Scheduler task started
         )
     ) else (
-        echo Scheduler service is running
+        echo Scheduler task is running
     )
 )
 

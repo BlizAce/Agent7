@@ -36,6 +36,11 @@ venv.bak/
 *.db-journal
 *.sqlite
 *.sqlite3
+
+# Log files
+scheduler_service.log
+scheduler_debug.log
+*.log
 agent7.db
 
 # Configuration (keep config.example.py, ignore actual config)

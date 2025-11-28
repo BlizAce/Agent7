@@ -124,19 +124,20 @@ python agent7.py execute-task 1
 python agent7.py task-details 1
 ```
 
-## Step 5: Install Windows Scheduler Service (Recommended)
+## Step 5: Install Task Scheduler (Recommended)
 
 For automatic task resumption when Claude hits session limits:
 
 ```cmd
 # Run as Administrator
-install_service.bat
+create_scheduled_task.bat
 ```
 
-This enables:
-- ⏰ Automatic task resumption at scheduled times
-- 🔄 Background operation (survives reboots)
-- 📅 No manual intervention needed
+This creates a Windows Scheduled Task that:
+- ⏰ Automatically resumes tasks at scheduled times
+- 🔄 Runs in background (survives reboots)
+- 📅 Requires no manual intervention
+- 📊 Logs activity to `scheduler_debug.log`
 
 ## Step 6: Try the Example (CLI)
 
@@ -241,9 +242,9 @@ python agent7.py execute-task 2 --language javascript
 - Test with: `claude --version`
 
 ### Tasks not resuming after session limit
-- Check scheduler service: `sc query Agent7Scheduler`
-- Install if missing: `install_service.bat` (as Administrator)
-- Check logs: `scheduler_service.log`
+- Check scheduler task: `schtasks /Query /TN "Agent7Scheduler"`
+- Install if missing: `create_scheduled_task.bat` (as Administrator)
+- Check logs: `scheduler_debug.log`
 
 ### Database errors
 - Check file permissions in the current directory

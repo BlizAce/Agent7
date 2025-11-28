@@ -301,41 +301,51 @@ python agent7.py execute-workflow 1 --language python
 - Local LLM is faster but may have lower quality; Claude is slower but higher quality
 - Use `--prefer-local` for quick iterations, Claude for important tasks
 
-## Windows Scheduler Service
+## Windows Task Scheduler (Automatic Resumption)
 
-The scheduler service runs in the background and handles automatic task resumption when Claude hits session limits.
+Agent7 uses Windows Task Scheduler to handle automatic task resumption when Claude hits session limits.
 
-### Install Service (Run as Administrator)
-
-```cmd
-install_service.bat
-```
-
-### Start/Stop Service
+### Install Scheduler (Run as Administrator)
 
 ```cmd
-net start Agent7Scheduler
-net stop Agent7Scheduler
+create_scheduled_task.bat
 ```
 
-### Check Service Status
+This creates a background task that:
+- Starts automatically on system boot
+- Runs continuously in the background
+- Checks for scheduled tasks every 30 seconds
+- Automatically resumes tasks when session limits expire
 
+### Manage Scheduler
+
+**Check Status:**
 ```cmd
-sc query Agent7Scheduler
+schtasks /Query /TN "Agent7Scheduler"
 ```
 
-### Uninstall Service
-
+**Stop:**
 ```cmd
-uninstall_service.bat
+schtasks /End /TN "Agent7Scheduler"
 ```
 
-### Service Features
+**Restart:**
+```cmd
+schtasks /Run /TN "Agent7Scheduler"
+```
+
+**Remove:**
+```cmd
+remove_scheduled_task.bat
+```
+
+### Scheduler Features
 
 - Runs in background even when UI is closed
 - Survives system reboots
 - Automatically resumes tasks at scheduled times
-- Logs to `scheduler_service.log`
+- Logs to `scheduler_debug.log`
+- More reliable than Windows Services
 
 ## Troubleshooting
 
