@@ -1,8 +1,16 @@
 # Agent7 - AI Task Management System
 
-Agent7 is a comprehensive AI-powered task management system that uses Claude CLI and local LLMs (via LM Studio) for autonomous software development tasks. Features intelligent orchestration, session management, automated testing, and a modern web UI.
+Agent7 is a comprehensive AI-powered task management system for autonomous software development. **Version 2.2+ works entirely with LM Studio** - no API required, no rate limits, completely local!
 
-## 🚀 New in Version 2.0
+## 🎉 New in Version 2.2 (Current)
+
+- **100% Local with LM Studio**: No Claude CLI required, completely free and unlimited
+- **Simpler Architecture**: Single AI system, easier to use and maintain
+- **Full Tool Chain**: Project exploration (7 tools) + file operations work seamlessly
+- **Iterative Execution**: LM Studio explores, creates, validates in intelligent cycles
+- **No Session Limits**: Run as long as you want with your local model
+
+## 🚀 Features from Version 2.0-2.1
 
 - **Web-Based UI**: Modern dashboard accessible at `http://localhost:5000`
 - **Intelligent Orchestration**: LM Studio orchestrates Claude for optimal results
@@ -13,7 +21,7 @@ Agent7 is a comprehensive AI-powered task management system that uses Claude CLI
 - **Real-Time Output**: WebSocket-powered live output streaming
 - **Project Explorer**: Browse and monitor file changes in real-time
 
-## Features
+## Features ✨
 
 - **Dual AI Architecture**: LM Studio orchestrates, Claude executes
 - **Task Types**: Planning, Coding, and Testing workflows
@@ -29,13 +37,12 @@ Agent7 is a comprehensive AI-powered task management system that uses Claude CLI
 ## Prerequisites
 
 1. **Python 3.8+**
-2. **Claude CLI** (optional): Install and configure Claude CLI
-   - Follow instructions at: https://docs.anthropic.com/claude/docs/claude-cli
-3. **LM Studio** (optional): Running at `http://localhost:1234/v1`
+2. **LM Studio** (required): Running at `http://localhost:1234/v1`
    - Download from: https://lmstudio.ai/
-   - Load a model and start the local server
+   - Load a code-capable model (recommend: DeepSeek Coder 33B, CodeLlama 34B)
+   - Start the API server in LM Studio
 
-At least one AI backend (Claude CLI or LM Studio) should be available.
+**Note**: v2.2+ uses LM Studio only. Claude CLI is planned for v3.0 as an optional enhancement.
 
 ## Installation
 
@@ -285,7 +292,32 @@ python agent7.py execute-workflow 1 --language python
 9. **Session Recovery**: If Claude hits limits, automatically schedules resumption
 10. **Completion**: Task marked complete with full history
 
-### How It Works
+### How It Works 🔄
+
+### File Operations Workflow
+
+Agent7 uses an intelligent file operations system:
+
+1. **Prompt Generation**: LM Studio creates prompts that tell Claude to format files properly:
+   ```
+   File: example.py
+   ```python
+   code here
+   ```
+   ```
+
+2. **Claude's Response**: Claude describes the code and formats file blocks
+
+3. **Automatic Parsing**: Agent7's `FileOperations` module:
+   - Extracts file blocks from Claude's output
+   - Identifies filenames and content
+   - Creates directories as needed
+   - Writes files to the project directory
+   - Tracks changes in database
+
+4. **Validation**: LM Studio verifies files were created correctly
+
+### Task Execution Workflow
 
 - **LM Studio** acts as the "brain" - makes decisions, validates work
 - **Claude CLI** acts as the "hands" - does the actual coding/planning

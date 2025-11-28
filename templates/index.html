@@ -80,6 +80,22 @@
                         </div>
                     </div>
                 </section>
+
+                <section class="panel chat-panel">
+                    <div class="panel-header">
+                        <h2>💬 Chat</h2>
+                        <button onclick="resetChat()" class="btn btn-small">Reset</button>
+                    </div>
+                    <div id="chatMessages" class="chat-messages">
+                        <div class="chat-message system">
+                            <strong>Agent7:</strong> Hi! I can help you create and execute tasks. Just tell me what you want to build!
+                        </div>
+                    </div>
+                    <div class="chat-input-container">
+                        <textarea id="chatInput" rows="2" placeholder="Type your message..." onkeydown="handleChatKeydown(event)"></textarea>
+                        <button onclick="sendChatMessage()" class="btn btn-primary">Send</button>
+                    </div>
+                </section>
             </div>
 
             <!-- Center Panel: Tasks List -->

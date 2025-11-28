@@ -11,12 +11,15 @@ from datetime import datetime
 
 # Import Agent7 modules
 from database import Database
-from claude_client import ClaudeClient
 from local_llm_client import LocalLLMClient
-from orchestration_brain import OrchestrationBrain
-from task_orchestrator import TaskOrchestrator
-from session_manager import SessionManager
 from test_runner import TestRunner
+from lm_studio_executor import LMStudioExecutor
+from chat_agent import ChatAgent
+
+# Claude integration - Future feature (v3.0)
+# from claude_client import ClaudeClient
+# from orchestration_brain import OrchestrationBrain
+# from session_manager import SessionManager
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -41,19 +44,16 @@ state = {
 def initialize_components():
     """Initialize all Agent7 components."""
     state['db'] = Database('agent7.db')
-    state['claude'] = ClaudeClient()
     state['local_llm'] = LocalLLMClient('http://localhost:1234/v1')
-    state['brain'] = OrchestrationBrain(state['local_llm'])
-    state['session_manager'] = SessionManager(state['db'])
     state['test_runner'] = TestRunner(state['db'])
+    state['lm_executor'] = None  # Initialized per project
+    state['chat_agent'] = ChatAgent(state['local_llm'], state['db'])
     
-    # Set up orchestrator
-    state['orchestrator'] = TaskOrchestrator(
-        state['db'],
-        state['claude'],
-        state['local_llm'],
-        prefer_local=False
-    )
+    # Legacy components (for reference, not used in v2.2)
+    # state['claude'] = ClaudeClient()
+    # state['brain'] = OrchestrationBrain(state['local_llm'])
+    # state['session_manager'] = SessionManager(state['db'])
+    # state['orchestrator'] = TaskOrchestrator(...)
 
 
 # Routes
@@ -209,6 +209,42 @@ def get_task(task_id):
     })
 
 
+@app.route('/api/task/<int:task_id>', methods=['DELETE'])
+def delete_task(task_id):
+    """Delete a task."""
+    try:
+        # Get task first to check if it exists
+        task = state['db'].get_task(task_id)
+        if not task:
+            return jsonify({'error': 'Task not found'}), 404
+        
+        # Delete from database
+        with state['db'].get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM tasks WHERE id = ?', (task_id,))
+            conn.commit()
+        
+        return jsonify({'success': True, 'message': f'Task #{task_id} deleted'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/task/<int:task_id>/archive', methods=['POST'])
+def archive_task(task_id):
+    """Archive a task by setting status to 'archived'."""
+    try:
+        task = state['db'].get_task(task_id)
+        if not task:
+            return jsonify({'error': 'Task not found'}), 404
+        
+        # Update status to archived
+        state['db'].update_task_status(task_id, 'archived')
+        
+        return jsonify({'success': True, 'message': f'Task #{task_id} archived'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/execute/<int:task_id>', methods=['POST'])
 def execute_task(task_id):
     """Execute a task."""
@@ -246,122 +282,106 @@ def execute_task_thread(task_id, project_dir):
         state['db'].update_task_status(task_id, 'in_progress')
         socketio.emit('task_status', {'task_id': task_id, 'status': 'in_progress'})
         
-        # Get orchestration from brain
-        socketio.emit('output', {'data': "🧠 Planning approach with LM Studio...\n"})
-        
-        # Get list of files in project
-        files_in_project = []
-        for root, dirs, files in os.walk(project_dir):
-            dirs[:] = [d for d in dirs if not d.startswith('.')]
-            for f in files:
-                if not f.startswith('.'):
-                    rel_path = os.path.relpath(os.path.join(root, f), project_dir)
-                    files_in_project.append(rel_path)
-        
-        orchestration = state['brain'].create_claude_prompt_for_task(
-            task['description'],
-            task['task_type'],
-            f"Working in: {project_dir}",
-            files_in_project=files_in_project[:50]  # Limit to avoid token issues
-        )
-        
-        socketio.emit('output', {'data': f"✅ Using agents: {', '.join(orchestration['agents'])}\n"})
-        socketio.emit('output', {'data': "🤖 Launching Claude CLI...\n\n"})
-        
-        # Execute with Claude
-        result = state['claude'].send_message_with_file_access(
-            prompt=orchestration['prompt'],
-            project_directory=project_dir,
-            use_agents=orchestration['agents']
-        )
-        
-        # Stream output
-        if result.get('response'):
-            socketio.emit('output', {'data': result['response'] + "\n"})
-        
-        # Check for session limit
-        if result.get('session_limited'):
-            reset_time = result.get('reset_time', '10pm')
-            socketio.emit('output', {'data': f"\n⏸️  Session limit reached. Scheduling resume at {reset_time}\n"})
-            
-            state['session_manager'].schedule_resume(
-                task_id=task_id,
-                reset_time_str=reset_time,
-                conversation_id=result.get('conversation_id', ''),
-                project_directory=project_dir,
-                remaining_prompt=orchestration['prompt']
+        # Initialize LM Studio executor for this project
+        if not state['lm_executor'] or state['lm_executor'].project_directory != project_dir:
+            socketio.emit('output', {'data': "🔧 Initializing LM Studio executor...\n"})
+            state['lm_executor'] = LMStudioExecutor(
+                state['local_llm'],
+                state['db'],
+                project_dir
             )
+        
+        # Callback for progress updates
+        def progress_callback(update):
+            status = update.get('status')
+            message = update.get('message', '')
             
-            state['db'].update_task_status(task_id, 'pending')
-            socketio.emit('task_status', {'task_id': task_id, 'status': 'scheduled'})
-            return
+            if status == 'starting':
+                socketio.emit('output', {'data': f"⚙️  {message}\n"})
+            elif status == 'executing':
+                socketio.emit('output', {'data': f"\n🤖 {message}\n"})
+            elif status == 'response':
+                response = update.get('response', '')
+                socketio.emit('output', {'data': f"\n{response}\n"})
+            elif status == 'tools':
+                socketio.emit('output', {'data': f"\n🔧 {message}\n"})
+            elif status == 'tool_results':
+                results = update.get('results', '')
+                socketio.emit('output', {'data': f"\n{results}\n"})
+            elif status == 'files':
+                summary = update.get('summary', '')
+                operations = update.get('operations', [])
+                if summary:
+                    socketio.emit('output', {'data': f"\n📝 {message}\n{summary}\n"})
+                else:
+                    socketio.emit('output', {'data': f"\n📝 {message} ({len(operations)} operations)\n"})
+            elif status == 'validation':
+                validation = update.get('validation', '')
+                socketio.emit('output', {'data': f"\n🧠 {message}\n{validation}\n"})
+        
+        # Execute with LM Studio
+        socketio.emit('output', {'data': "🤖 Executing with LM Studio...\n\n"})
+        
+        result = state['lm_executor'].execute_task(
+            task_id=task_id,
+            task_description=task['description'],
+            task_type=task['task_type'],
+            max_iterations=3,
+            callback=progress_callback
+        )
+        
+        # Get status and files
+        status = result.get('status', 'UNKNOWN')
+        file_operations = result.get('file_operations', [])
+        files_modified = [op['filepath'] for op in file_operations if op.get('success')]
         
         # Save conversation
         state['db'].save_conversation(
             task_id,
-            'claude_cli',
-            orchestration['prompt'],
+            'lm_studio',
             result.get('response', ''),
-            result.get('metadata')
+            result.get('response', ''),
+            {'iterations': result.get('iterations', 1)}
         )
         
-        # Save file modifications
-        files_modified = result.get('files_modified', [])
-        for filepath in files_modified:
-            state['db'].save_file_modification(task_id, filepath, 'modified')
-        
-        if files_modified:
-            socketio.emit('output', {'data': f"\n📝 Files modified: {', '.join(files_modified)}\n"})
-        
         # Execute tests if applicable
-        if task['task_type'] in ['coding', 'testing']:
+        if task['task_type'] in ['coding', 'testing'] and files_modified:
             socketio.emit('output', {'data': "\n🧪 Running tests...\n"})
             
             test_results = state['test_runner'].execute_pytest(project_dir)
             test_summary = state['test_runner'].format_results_summary(test_results)
             socketio.emit('output', {'data': test_summary + "\n"})
-            
-            # Validate with brain
-            socketio.emit('output', {'data': "\n🧠 Validating with LM Studio...\n"})
-            test_validation = state['brain'].validate_test_results(
-                test_results.get('full_output', ''),
-                test_results.get('passed', False),
-                task['description']
-            )
-            socketio.emit('output', {'data': f"Assessment: {test_validation['assessment']}\n"})
         
-        # Validate Claude's work
-        socketio.emit('output', {'data': "\n🧠 Validating results with LM Studio...\n"})
-        validation = state['brain'].validate_claude_work(
-            task['task_type'],
-            task['description'],
-            result.get('response', ''),
-            files_modified,
-            orchestration['validation_criteria']
-        )
-        
-        socketio.emit('output', {'data': f"Status: {validation['status']}\n"})
-        socketio.emit('output', {'data': f"Confidence: {validation['confidence']}%\n"})
-        
-        if validation['issues']:
-            socketio.emit('output', {'data': f"Issues: {', '.join(validation['issues'])}\n"})
+        socketio.emit('output', {'data': f"\n{'='*60}\n"})
+        socketio.emit('output', {'data': f"✅ Status: {status}\n"})
+        socketio.emit('output', {'data': f"📝 Files Created: {len(files_modified)}\n"})
+        socketio.emit('output', {'data': f"🔄 Iterations: {result.get('iterations', 1)}\n"})
         
         # Save result
         state['db'].save_result(
             task_id,
             task['task_type'],
             result.get('response', ''),
-            {'validation': validation, 'files_modified': files_modified}
+            {
+                'status': status,
+                'files_modified': files_modified,
+                'iterations': result.get('iterations', 1),
+                'tool_results': len(result.get('tool_results', []))
+            }
         )
         
         # Update task status
-        if validation['status'] == 'COMPLETE':
+        if status == 'COMPLETED':
             state['db'].update_task_status(task_id, 'completed')
             socketio.emit('output', {'data': "\n✅ Task completed successfully!\n"})
             socketio.emit('task_status', {'task_id': task_id, 'status': 'completed'})
+        elif status == 'NEEDS_REVISION':
+            state['db'].update_task_status(task_id, 'pending')
+            socketio.emit('output', {'data': "\n⚠️  Task needs revision\n"})
+            socketio.emit('task_status', {'task_id': task_id, 'status': 'pending'})
         else:
             state['db'].update_task_status(task_id, 'failed')
-            socketio.emit('output', {'data': "\n❌ Task needs revision\n"})
+            socketio.emit('output', {'data': "\n❌ Task failed\n"})
             socketio.emit('task_status', {'task_id': task_id, 'status': 'failed'})
     
     except Exception as e:
@@ -432,6 +452,70 @@ def get_stats():
     }
     
     return jsonify(stats)
+
+
+@app.route('/api/chat', methods=['POST'])
+def chat():
+    """Send a chat message to the agent."""
+    if not state['chat_agent']:
+        return jsonify({'error': 'Chat agent not initialized'}), 500
+    
+    data = request.get_json()
+    message = data.get('message', '')
+    
+    if not message:
+        return jsonify({'error': 'No message provided'}), 400
+    
+    # Get current project directory and ID
+    project_dir = state.get('current_project_directory')
+    project_id = state.get('current_project_id')
+    
+    # Send message to chat agent
+    result = state['chat_agent'].send_message(message, project_dir, project_id)
+    
+    # Handle any actions
+    actions = result.get('actions', [])
+    for action in actions:
+        # If task was created, notify UI to refresh task list
+        if action.get('action') == 'create_task' and action.get('success'):
+            socketio.emit('task_created', {
+                'task_id': action.get('task_id'),
+                'title': action.get('title')
+            })
+        
+        # If execution was requested, actually execute the task
+        if action.get('execute') and action.get('task_id'):
+            task_id = action['task_id']
+            
+            # Get task details
+            task = state['db'].get_task(task_id)
+            if task and state.get('current_project_directory'):
+                # Execute in background thread
+                thread = threading.Thread(
+                    target=execute_task_thread,
+                    args=(task_id, task, state['current_project_directory'])
+                )
+                thread.daemon = True
+                thread.start()
+                
+                # Mark action as executed
+                action['executed'] = True
+                action['message'] = f"Task #{task_id} execution started"
+    
+    return jsonify({
+        'success': True,
+        'response': result.get('response'),
+        'actions': actions
+    })
+
+
+@app.route('/api/chat/reset', methods=['POST'])
+def reset_chat():
+    """Reset chat conversation history."""
+    if state['chat_agent']:
+        state['chat_agent'].reset_conversation()
+        return jsonify({'success': True, 'message': 'Chat history reset'})
+    return jsonify({'error': 'Chat agent not initialized'}), 500
 
 
 # WebSocket events

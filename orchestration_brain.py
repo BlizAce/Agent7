@@ -67,10 +67,30 @@ Create instructions for Claude that:
 4. Include validation criteria for checking success
 5. Be specific about expected outputs
 
+CRITICAL: In your PROMPT, tell Claude to format ANY file creation/modification like this:
+File: filename.ext
+```language
+code content
+```
+
+This format is REQUIRED so our system can automatically create the files.
+
+Claude also has access to PROJECT EXPLORATION TOOLS:
+- list_files(path, extensions) - List files in directory
+- read_file(filepath, start_line, end_line) - Read file contents
+- search_in_files(pattern, extensions) - Search for text/patterns
+- find_files(name_pattern) - Find files by name
+- find_definitions(name, type) - Find functions/classes
+- get_project_structure(max_depth) - Get directory tree
+- get_file_info(filepath) - Get file metadata
+
+Tell Claude to request tools explicitly like: "TOOL: read_file(filepath='main.py')"
+or naturally like: "I need to use read_file on main.py to understand the structure"
+
 IMPORTANT: Format your response EXACTLY as follows:
 
 AGENTS: [comma-separated list of agent names]
-PROMPT: [the actual detailed prompt to send to Claude]
+PROMPT: [the actual detailed prompt to send to Claude - MUST include file format instructions]
 VALIDATION: [criteria to check if task was completed successfully]
 
 Be concise but specific. Claude will run with --dangerously-skip-permissions so it can create/modify files."""

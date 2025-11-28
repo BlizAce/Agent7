@@ -41,6 +41,21 @@ socket.on('task_status', function(data) {
     refreshStats();
 });
 
+socket.on('task_created', function(data) {
+    console.log('Task created:', data);
+    addOutput(`\n✅ Task created: #${data.task_id} - ${data.title}\n`);
+    refreshTasks();
+    refreshStats();
+});
+
+socket.on('chat_action', function(data) {
+    console.log('Chat action:', data);
+    if (data.type === 'execute_task') {
+        addOutput(`\n🚀 Executing task #${data.task_id}...\n`);
+        refreshTasks();
+    }
+});
+
 socket.on('execution_complete', function() {
     executionActive = false;
     document.getElementById('execStatus').textContent = 'Idle';
@@ -205,6 +220,12 @@ async function refreshTasks() {
                     <button onclick="viewTaskDetails(${task.id})" class="btn btn-small">
                         📋 Details
                     </button>
+                    <button onclick="archiveTask(${task.id})" class="btn btn-small" title="Archive task">
+                        📦 Archive
+                    </button>
+                    <button onclick="deleteTask(${task.id})" class="btn btn-danger btn-small" title="Delete task permanently">
+                        🗑️ Delete
+                    </button>
                 </div>
             </div>
         `).join('');
@@ -280,6 +301,56 @@ async function viewTaskDetails(taskId) {
         }
     } catch (error) {
         console.error('Error viewing task details:', error);
+    }
+}
+
+async function archiveTask(taskId) {
+    if (!confirm('Archive this task? It will be hidden from the list.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/task/${taskId}/archive`, {
+            method: 'POST'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            addOutput(`\n📦 ${data.message}\n`);
+            refreshTasks();
+            refreshStats();
+        } else {
+            addOutput(`\n❌ Failed to archive: ${data.error}\n`);
+        }
+    } catch (error) {
+        console.error('Error archiving task:', error);
+        addOutput(`\n❌ Error archiving task: ${error.message}\n`);
+    }
+}
+
+async function deleteTask(taskId) {
+    if (!confirm('⚠️ DELETE this task permanently? This cannot be undone!')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/task/${taskId}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            addOutput(`\n🗑️ ${data.message}\n`);
+            refreshTasks();
+            refreshStats();
+        } else {
+            addOutput(`\n❌ Failed to delete: ${data.error}\n`);
+        }
+    } catch (error) {
+        console.error('Error deleting task:', error);
+        addOutput(`\n❌ Error deleting task: ${error.message}\n`);
     }
 }
 
@@ -368,6 +439,124 @@ function getFileIcon(filename) {
         'yaml': '⚙️',
     };
     return icons[ext] || '📄';
+}
+
+// Chat Functions
+async function sendChatMessage() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    // Add user message to chat
+    addChatMessage('user', 'You', message);
+    
+    // Clear input
+    input.value = '';
+    
+    // Show typing indicator
+    const typingId = addChatMessage('system', '', 'Agent7 is thinking...');
+    
+    try {
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({message})
+        });
+        
+        const data = await response.json();
+        
+        // Remove typing indicator
+        document.getElementById(typingId)?.remove();
+        
+        if (data.success) {
+            // Add assistant response
+            addChatMessage('assistant', 'Agent7', data.response);
+            
+            // Handle actions
+            if (data.actions && data.actions.length > 0) {
+                data.actions.forEach(action => {
+                    if (action.success) {
+                        addChatMessage('action', 'System', action.message || JSON.stringify(action));
+                        
+                        // If task was created, refresh tasks list
+                        if (action.action === 'create_task') {
+                            refreshTasks();
+                            refreshStats();
+                        }
+                        
+                        // If task was executed, notify and refresh
+                        if (action.executed) {
+                            addOutput(`\n💬 ${action.message}\n`);
+                            refreshTasks();
+                        } else if (action.execute) {
+                            // Fallback if not executed yet
+                            addOutput(`\n💬 Chat requested task execution: #${action.task_id}\n`);
+                        }
+                    }
+                });
+            }
+        } else {
+            addChatMessage('system', 'Error', data.error || 'Failed to send message');
+        }
+    } catch (error) {
+        document.getElementById(typingId)?.remove();
+        addChatMessage('system', 'Error', 'Failed to communicate with server');
+        console.error('Chat error:', error);
+    }
+}
+
+function addChatMessage(type, sender, message) {
+    const messagesDiv = document.getElementById('chatMessages');
+    const msgDiv = document.createElement('div');
+    const msgId = 'msg-' + Date.now() + '-' + Math.random();
+    
+    msgDiv.id = msgId;
+    msgDiv.className = `chat-message ${type}`;
+    
+    if (sender) {
+        msgDiv.innerHTML = `<strong>${sender}:</strong> ${escapeHtml(message)}`;
+    } else {
+        msgDiv.textContent = message;
+    }
+    
+    messagesDiv.appendChild(msgDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    
+    return msgId;
+}
+
+async function resetChat() {
+    if (!confirm('Reset chat history?')) return;
+    
+    try {
+        const response = await fetch('/api/chat/reset', {method: 'POST'});
+        const data = await response.json();
+        
+        if (data.success) {
+            document.getElementById('chatMessages').innerHTML = `
+                <div class="chat-message system">
+                    <strong>Agent7:</strong> Chat history reset. How can I help you?
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error resetting chat:', error);
+    }
+}
+
+function handleChatKeydown(event) {
+    // Send on Ctrl+Enter or Cmd+Enter
+    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
+        sendChatMessage();
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 
