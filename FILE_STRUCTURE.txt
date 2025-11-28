@@ -1,84 +1,146 @@
-Agent7 Project Structure
-========================
+Agent7 Project Structure (Version 2.0)
+=======================================
 
 Agent7/
 │
-├── 📋 Core Application Files
-│   ├── agent7.py              - Main CLI application (entry point)
-│   ├── database.py            - SQLite database management
-│   ├── claude_client.py       - Claude CLI integration
-│   ├── local_llm_client.py    - Local LLM (LM Studio) integration
-│   └── task_orchestrator.py   - Task execution and workflow engine
+├── 🌐 Web Application (NEW in v2.0)
+│   ├── web_server.py                - Flask web server with Socket.IO
+│   ├── templates/
+│   │   └── index.html              - Main dashboard UI
+│   └── static/
+│       ├── css/
+│       │   └── style.css           - Modern styling
+│       └── js/
+│           └── app.js              - Client-side JavaScript
 │
-├── 📚 Documentation Files
-│   ├── README.md              - Complete documentation
-│   ├── QUICKSTART.md          - 5-minute quick start guide
-│   ├── ARCHITECTURE.md        - System architecture and design
-│   ├── PROJECT_SUMMARY.md     - Project overview and summary
-│   └── FILE_STRUCTURE.txt     - This file
+├── 🧠 Orchestration Layer (NEW in v2.0)
+│   ├── orchestration_brain.py      - LM Studio orchestration engine
+│   ├── session_manager.py          - Session limit & scheduling
+│   ├── scheduler_service.py        - Windows background service
+│   └── test_runner.py              - Automated test execution
+│
+├── 📋 Core Application Files (Enhanced)
+│   ├── agent7.py                   - CLI application (legacy, still works)
+│   ├── database.py                 - Enhanced SQLite with 3 new tables
+│   ├── claude_client.py            - Enhanced with file access mode
+│   ├── local_llm_client.py         - LM Studio integration
+│   ├── task_orchestrator.py        - Enhanced with brain integration
+│   └── config.py                   - Centralized configuration (NEW)
+│
+├── 🚀 Launchers & Scripts (NEW in v2.0)
+│   ├── launch_agent7.bat           - Easy one-click launcher
+│   ├── install_service.bat         - Install Windows service
+│   └── uninstall_service.bat       - Uninstall Windows service
+│
+├── 📚 Documentation Files (Updated for v2.0)
+│   ├── README.md                   - Complete documentation
+│   ├── QUICKSTART.md               - Web UI quick start guide
+│   ├── ARCHITECTURE.md             - v2.0 system architecture
+│   ├── PROJECT_SUMMARY.md          - Project overview
+│   ├── IMPLEMENTATION_SUMMARY.md   - Implementation details (NEW)
+│   ├── CHANGELOG.md                - Version history (NEW)
+│   └── FILE_STRUCTURE.txt          - This file
 │
 ├── 🔧 Configuration & Setup Files
-│   ├── requirements.txt       - Python dependencies
-│   ├── config.example.py      - Example configuration file
-│   └── .gitignore            - Git ignore rules
+│   ├── requirements.txt            - All dependencies (updated)
+│   ├── config.py                   - Active configuration (NEW)
+│   ├── config.example.py           - Example configuration template
+│   └── .gitignore                  - Git ignore rules
 │
 ├── 🧪 Testing & Examples
-│   ├── test_setup.py         - Setup verification script
-│   └── example_usage.py      - Working example/demo
+│   ├── test_setup.py               - Setup verification script
+│   └── example_usage.py            - Working example/demo
 │
 └── 📊 Generated Files (created at runtime)
-    └── agent7.db             - SQLite database (created on first run)
+    ├── agent7.db                   - SQLite database
+    ├── scheduler_service.log       - Service logs
+    └── venv/                       - Virtual environment (auto-created)
 
 
-Quick Command Reference
-=======================
+Quick Command Reference (Version 2.0)
+=====================================
 
-Setup & Status:
+🌐 Web UI (RECOMMENDED):
+  launch_agent7.bat                       # Start everything (easiest way)
+  python web_server.py                    # Start web server manually
+  # Then open browser to: http://localhost:5000
+
+🔧 Service Management:
+  install_service.bat                     # Install Windows service (as Admin)
+  net start Agent7Scheduler               # Start scheduler service
+  net stop Agent7Scheduler                # Stop scheduler service
+  sc query Agent7Scheduler                # Check service status
+  uninstall_service.bat                   # Remove service (as Admin)
+
+📋 Setup & Status:
   python test_setup.py                    # Verify setup
-  python agent7.py status                 # Check system status
+  python agent7.py status                 # Check system status (CLI)
 
-Project Management:
-  python agent7.py create-project "Name" "Description"
-  python agent7.py list-projects
+💻 CLI Commands (Still Available):
+  
+  Project Management:
+    python agent7.py create-project "Name" "Description"
+    python agent7.py list-projects
 
-Task Management:
-  python agent7.py create-task <project_id> --type <type> --title "Title" --desc "Description"
-  python agent7.py list-tasks
-  python agent7.py list-tasks --project <id>
-  python agent7.py list-tasks --status pending
-  python agent7.py task-details <task_id>
+  Task Management:
+    python agent7.py create-task <project_id> --type <type> --title "Title" --desc "Description"
+    python agent7.py list-tasks
+    python agent7.py list-tasks --project <id>
+    python agent7.py list-tasks --status pending
+    python agent7.py task-details <task_id>
 
-Execution:
-  python agent7.py execute-task <task_id>
-  python agent7.py execute-workflow <project_id>
+  Execution:
+    python agent7.py execute-task <task_id>
+    python agent7.py execute-workflow <project_id>
 
-Examples:
-  python example_usage.py                 # Run complete demo
+  Examples:
+    python example_usage.py                 # Run complete demo
 
 
-File Sizes (approximate)
-========================
+File Sizes (approximate) - Version 2.0
+=======================================
 
-Core Modules:
-  database.py           ~10 KB  (350+ lines)
-  claude_client.py      ~6 KB   (180+ lines)
-  local_llm_client.py   ~6 KB   (180+ lines)
-  task_orchestrator.py  ~11 KB  (320+ lines)
-  agent7.py            ~13 KB  (380+ lines)
+Web Application:
+  web_server.py        ~15 KB  (450+ lines)
+  index.html           ~5 KB   (150+ lines)
+  style.css            ~10 KB  (350+ lines)
+  app.js              ~10 KB  (300+ lines)
+
+Orchestration Layer:
+  orchestration_brain.py  ~13 KB  (400+ lines)
+  session_manager.py      ~8 KB   (250+ lines)
+  scheduler_service.py    ~10 KB  (280+ lines)
+  test_runner.py          ~12 KB  (350+ lines)
+
+Core Modules (Enhanced):
+  database.py             ~15 KB  (450+ lines)
+  claude_client.py        ~12 KB  (350+ lines)
+  local_llm_client.py     ~6 KB   (180+ lines)
+  task_orchestrator.py    ~17 KB  (500+ lines)
+  config.py               ~6 KB   (180+ lines)
+  agent7.py               ~13 KB  (380+ lines)
 
 Supporting:
-  example_usage.py      ~4 KB   (120+ lines)
-  test_setup.py        ~5 KB   (150+ lines)
-  config.example.py    ~1 KB   (30+ lines)
+  example_usage.py        ~4 KB   (120+ lines)
+  test_setup.py          ~5 KB   (150+ lines)
+  config.example.py      ~1 KB   (30+ lines)
 
 Documentation:
-  README.md            ~10 KB
-  QUICKSTART.md        ~4 KB
-  ARCHITECTURE.md      ~8 KB
-  PROJECT_SUMMARY.md   ~6 KB
+  README.md              ~15 KB
+  QUICKSTART.md          ~8 KB
+  ARCHITECTURE.md        ~15 KB
+  PROJECT_SUMMARY.md     ~10 KB
+  IMPLEMENTATION_SUMMARY ~10 KB
+  CHANGELOG.md           ~8 KB
 
-Total Code: ~46 KB (1500+ lines of Python)
-Total Docs: ~28 KB
+Launchers:
+  launch_agent7.bat      ~2 KB
+  install_service.bat    ~1 KB
+  uninstall_service.bat  ~1 KB
+
+Total Code: ~156 KB (4,700+ lines of Python + HTML/CSS/JS)
+Total Docs: ~66 KB
+Total Project: ~225 KB (29 files)
 
 
 Module Dependencies
@@ -144,19 +206,40 @@ Development Workflow
    - Read ARCHITECTURE.md to understand the system
 
 
-Key Features
-============
+Key Features (Version 2.0)
+==========================
 
-✅ Dual AI backends (Claude CLI + Local LLM)
-✅ Complete task lifecycle management
-✅ Persistent storage with full history
-✅ Workflow automation
-✅ Priority-based execution
-✅ Flexible CLI interface
-✅ Programmatic API
-✅ Error handling and recovery
+✅ Web-based UI at localhost:5000
+✅ Real-time output streaming (WebSocket)
+✅ Intelligent orchestration (LM Studio brain)
+✅ Claude with direct file access
+✅ Automatic session limit handling
+✅ Windows service for scheduling
+✅ Automated test execution
+✅ AI validation of all outputs
+✅ Project file explorer
+✅ Complete task history
+✅ Single project focus
+✅ Resilient (survives reboots)
+✅ Backward compatible CLI
 ✅ Comprehensive documentation
-✅ Working examples included
+✅ One-click launcher
 ✅ Easy setup and testing
+
+What's New in v2.0:
+===================
+
+🆕 Web interface with modern dashboard
+🆕 LM Studio orchestration brain
+🆕 Session recovery with scheduling
+🆕 Windows background service
+🆕 Automated test runner
+🆕 File access mode for Claude
+🆕 Real-time WebSocket updates
+🆕 Project file explorer
+🆕 Enhanced database (3 new tables)
+🆕 Comprehensive configuration system
+🆕 One-click launcher script
+🆕 Service installation scripts
 
 
