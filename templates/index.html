@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent7 - AI Task Management</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 Agent7</h1>
+            <p>AI-Powered Task Management System</p>
+            <div class="status-bar" id="statusBar">
+                <span id="statusLLM" class="status-indicator">LM Studio: <span id="llmStatus">⏳</span></span>
+                <span id="statusProject" class="status-indicator">Project: <span id="projectStatus">None</span></span>
+                <span id="statusExec" class="status-indicator">Execution: <span id="execStatus">Idle</span></span>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <!-- Left Panel: Controls -->
+            <div class="left-panel">
+                <section class="panel project-panel">
+                    <h2>📁 Project</h2>
+                    <div class="form-group">
+                        <label for="projectDir">Project Directory:</label>
+                        <input type="text" id="projectDir" placeholder="C:\Projects\MyApp">
+                        <button onclick="selectProject()" class="btn btn-primary">Select Project</button>
+                    </div>
+                    <div id="currentProject" class="info-box hidden">
+                        <strong>Current:</strong> <span id="currentProjectPath"></span>
+                    </div>
+                </section>
+
+                <section class="panel task-panel">
+                    <h2>📝 Create Task</h2>
+                    <div class="form-group">
+                        <label for="taskTitle">Title:</label>
+                        <input type="text" id="taskTitle" placeholder="Task title">
+                    </div>
+                    <div class="form-group">
+                        <label for="taskDesc">Description:</label>
+                        <textarea id="taskDesc" rows="3" placeholder="Detailed task description"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskType">Type:</label>
+                        <select id="taskType">
+                            <option value="planning">Planning</option>
+                            <option value="coding">Coding</option>
+                            <option value="testing">Testing</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskPriority">Priority:</label>
+                        <input type="number" id="taskPriority" value="0" min="0" max="10">
+                    </div>
+                    <button onclick="createTask()" class="btn btn-success">Create Task</button>
+                </section>
+
+                <section class="panel stats-panel">
+                    <h2>📊 Statistics</h2>
+                    <div id="stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Total Tasks:</span>
+                            <span class="stat-value" id="statTotal">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Pending:</span>
+                            <span class="stat-value" id="statPending">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Completed:</span>
+                            <span class="stat-value stat-success" id="statCompleted">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Failed:</span>
+                            <span class="stat-value stat-danger" id="statFailed">0</span>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Center Panel: Tasks List -->
+            <div class="center-panel">
+                <section class="panel tasks-list-panel">
+                    <div class="panel-header">
+                        <h2>📋 Tasks</h2>
+                        <button onclick="refreshTasks()" class="btn btn-small">🔄 Refresh</button>
+                    </div>
+                    <div id="tasksList" class="tasks-list">
+                        <!-- Tasks will be loaded here -->
+                    </div>
+                </section>
+            </div>
+
+            <!-- Right Panel: Output & Files -->
+            <div class="right-panel">
+                <section class="panel output-panel">
+                    <div class="panel-header">
+                        <h2>💻 Output</h2>
+                        <button onclick="clearOutput()" class="btn btn-small">Clear</button>
+                    </div>
+                    <div id="output" class="output-console">
+                        <div class="output-line">Agent7 ready. Select a project to begin.</div>
+                    </div>
+                </section>
+
+                <section class="panel files-panel">
+                    <div class="panel-header">
+                        <h2>📂 Project Files</h2>
+                        <button onclick="refreshFiles()" class="btn btn-small">🔄</button>
+                    </div>
+                    <div id="filesList" class="files-list">
+                        <!-- Files will be loaded here -->
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
+
+
